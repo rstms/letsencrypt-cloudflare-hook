@@ -17,6 +17,7 @@ import os
 import requests
 import sys
 import time
+import subprocess
 
 from tld import get_tld
 
@@ -142,24 +143,21 @@ def delete_txt_record(args):
     else:
         logger.debug(" + No TXT {0} with token {1}".format(name, token))
 
-
 def deploy_cert(args):
     domain, privkey_pem, cert_pem, fullchain_pem, chain_pem, timestamp = args
     logger.debug(' + ssl_certificate: {0}'.format(fullchain_pem))
     logger.debug(' + ssl_certificate_key: {0}'.format(privkey_pem))
-    return
-
+    _hook_script('CF_SCRIPT_DEPLOY', args)
 
 def unchanged_cert(args):
+    _hook_script('CF_SCRIPT_UNCHANGED', args)
     return
     
-
 def invalid_challenge(args):
     domain, result = args
     logger.debug(' + invalid_challenge for {0}'.format(domain))
     logger.debug(' + Full error: {0}'.format(result))
     return
-
 
 def create_all_txt_records(args):
     X = 3
@@ -182,12 +180,19 @@ def delete_all_txt_records(args):
         delete_txt_record(args[i:i+X])
 
 def startup_hook(args):
+    _hook_script('CF_SCRIPT_STARTUP', args)
     return
 
 def exit_hook(args):
+    _hook_script('CF_SCRIPT_EXIT', args)
     return
 
-
+def _hook_script(hook, args):
+    script = os.environ.get(hook)
+    if script:
+        args.insert(0, script)
+        subprocess.check_call(args)
+    
 def main(argv):
     ops = {
         'deploy_challenge': create_all_txt_records,
